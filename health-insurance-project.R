@@ -89,6 +89,9 @@ anxiety_variables <- c("IRDSTNRV30","IRDSTRST30","IRDSTNRV12","IRDSTRST12","IRIM
 # Create a new variable in cleaned_data that sums the anxiety-related variables
 cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = TRUE)
 
+# Combining depression and anxiety scores
+cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
+
 # View the cleaned data to check the new variables
 head(cleaned_data)
 
