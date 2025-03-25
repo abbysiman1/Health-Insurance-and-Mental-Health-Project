@@ -6,6 +6,7 @@ install.packages('tidyverse',dependency=T)
 
 library(readr)
 library(dplyr)
+library(ggplot2)
 
 # Load important packages
 
@@ -19,7 +20,7 @@ data_2023 <- read.csv(file_path)
 data_2023 <- read_delim(file_path, delim = "\t")
 
 # Selecting specific columns
-data_subset <- select(data_2023, QUESTID2, FILEDATE, COUTYP4, CATAGE, HEALTH2, IREDUHIGHST2, IRSEX, NEWRACE2, SEXRACE, IRMEDICR, IRMCDCHP, IRPRVHLT, GRPHLTIN, HLTINALC, HLTINDRG, HLTINMNT, HLCNOTYR, IRINSUR4, GOVTPROG, INCOME, POVERTY3, IRWRKSTAT, COCLNEGMH, COCLFINANC, COMHTELE2, COMHAPTDL2, COMHRXDL2, COMHSVHLT2, IRDSTNRV30, IRDSTHOP30, IRDSTRST30, IRDSTCHR30, IRDSTNGD30, IRDSTNRV12, IRDSTHOP12, IRDSTRST12, IRDSTCHR12, IRDSTEFF12, IRDSTNGD12, IRIMPGOUT, IRIMPSOC, IRIMPHHLD, IRIMPWORK)
+data_subset <- select(data_2023, QUESTID2, FILEDATE, COUTYP4, CATAG6, HEALTH2, IREDUHIGHST2, IRSEX, NEWRACE2, SEXRACE, IRMEDICR, IRMCDCHP, IRPRVHLT, GRPHLTIN, HLTINALC, HLTINDRG, HLTINMNT, HLCNOTYR, IRINSUR4, GOVTPROG, INCOME, POVERTY3, IRWRKSTAT, COCLNEGMH, COCLFINANC, COMHTELE2, COMHAPTDL2, COMHRXDL2, COMHSVHLT2, IRDSTNRV30, IRDSTHOP30, IRDSTRST30, IRDSTCHR30, IRDSTNGD30, IRDSTNRV12, IRDSTHOP12, IRDSTRST12, IRDSTCHR12, IRDSTEFF12, IRDSTNGD12, IRIMPGOUT, IRIMPSOC, IRIMPHHLD, IRIMPWORK)
 
 # Display the first few rows of the subset
 head(data_subset)
@@ -75,25 +76,71 @@ for (var in more_variables_to_recode) {
 head(cleaned_data)
 
 # Creating a running total for the depression column
+# Nine variables
+# 0-45
+# score > 36 ; depressed
 depression_variables <- c("IRDSTHOP30","IRDSTCHR30","IRDSTNGD30","IRDSTHOP12","IRDSTCHR12","IRDSTEFF12","IRDSTNGD12","IRIMPHHLD","IRIMPWORK")
-
-# Create a new variable in cleaned_data that sums the depression-related variables
 cleaned_data$depression_score <- rowSums(cleaned_data[depression_variables], na.rm = TRUE)
+# Calculate mental health score and classify mental health status as 0 or 1
+cleaned_data <- cleaned_data %>%
+  mutate(
+    depression_status = ifelse(depression_score > 36, 1, 0)  
+  )
+
+# Creating boxplot to represent Depression distribution
+ggplot(cleaned_data, aes(x = depression_score)) +
+  geom_boxplot(fill = "pink") +  # Set boxplot color to sky blue
+  theme_minimal() +
+  theme(axis.title.y = element_blank())
+
+summary(cleaned_data$depression_score)
+sum(is.na(cleaned_data$depression_score))
 
 # View the cleaned data to check the new variable
 head(cleaned_data)
 
 # Creating a running total for the anxiety column
+# Six variables
+# 0-30
+# score > 24 ; has anxiety
 anxiety_variables <- c("IRDSTNRV30","IRDSTRST30","IRDSTNRV12","IRDSTRST12","IRIMPGOUT","IRIMPSOC")
-
-# Create a new variable in cleaned_data that sums the anxiety-related variables
 cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = TRUE)
+# Calculate mental health score and classify mental health status as 0 or 1
+cleaned_data <- cleaned_data %>%
+  mutate(
+    anxiety_status = ifelse(anxiety_score > 24, 1, 0)  
+  )
 
-# Combining depression and anxiety scores
-cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
+# Creating boxplot to represent Depression distribution
+ggplot(cleaned_data, aes(x = anxiety_score)) +
+  geom_boxplot(fill = "pink") +  # Set boxplot color to sky blue
+  theme_minimal() +
+  theme(axis.title.y = element_blank())
 
 # View the cleaned data to check the new variables
 head(cleaned_data)
+
+# Combining depression and anxiety scores
+# 15 variables
+# 0-75
+# score > 60 depressed
+cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
+
+# Calculate mental health score and classify mental health status as 0 or 1
+cleaned_data <- cleaned_data %>%
+  mutate(
+    mental_health_status = ifelse(mental_health_score > 60, 1, 0)  # 1 for Poor Mental Health, 0 for Good Mental Health
+  )
+
+# Creating boxplot to represent Depression distribution
+ggplot(cleaned_data, aes(x = mental_health_score)) +
+  geom_boxplot(fill = "pink") +  # Set boxplot color to sky blue
+  theme_minimal() +
+  theme(axis.title.y = element_blank())
+
+sum(cleaned_data$depression_status == 1)
+sum(cleaned_data$anxiety_status == 1)
+sum(cleaned_data$mental_health_status == 1)
 
 
 
