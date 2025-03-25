@@ -8,9 +8,13 @@ rm(puf2023_102124)
 
 #### PART 1: CLEANING THE DATA
 # eliminate unnecessary columns
-data_subset <- select(data, QUESTID2, FILEDATE, COUTYP4, CATAGE, HEALTH2, IREDUHIGHST2, IRSEX, NEWRACE2, SEXRACE, IRMEDICR, IRMCDCHP, IRPRVHLT, GRPHLTIN, HLTINALC, HLTINDRG, HLTINMNT, HLCNOTYR, IRINSUR4, GOVTPROG, INCOME, POVERTY3, IRWRKSTAT, COCLNEGMH, COCLFINANC, COMHTELE2, COMHAPTDL2, COMHRXDL2, COMHSVHLT2, IRDSTNRV30, IRDSTHOP30, IRDSTRST30, IRDSTCHR30, IRDSTNGD30, IRDSTNRV12, IRDSTHOP12, IRDSTRST12, IRDSTCHR12, IRDSTEFF12, IRDSTNGD12, IRIMPGOUT, IRIMPSOC, IRIMPHHLD, IRIMPWORK)
+data_subset <- select(data, QUESTID2, FILEDATE, COUTYP4, CATAG6, HEALTH2, IREDUHIGHST2, IRSEX, NEWRACE2, SEXRACE, IRMEDICR, IRMCDCHP, IRPRVHLT, GRPHLTIN, HLTINALC, HLTINDRG, HLTINMNT, HLCNOTYR, IRINSUR4, GOVTPROG, INCOME, POVERTY3, IRWRKSTAT, COCLNEGMH, COCLFINANC, COMHTELE2, COMHAPTDL2, COMHRXDL2, COMHSVHLT2, IRDSTNRV30, IRDSTHOP30, IRDSTRST30, IRDSTCHR30, IRDSTNGD30, IRDSTNRV12, IRDSTHOP12, IRDSTRST12, IRDSTCHR12, IRDSTEFF12, IRDSTNGD12, IRIMPGOUT, IRIMPSOC, IRIMPHHLD, IRIMPWORK)
 
-## MENTAL HEALTH DATA RECODE
+#Create a new subset where people are over 18
+data_subset_adults <- data[data$CATAG6>1, ]
+data_subset_adults2 <- data_subset_adults[data_subset_adults$IRWRKSTAT<50, ]
+
+## MENTAL HEALTH RECODE
 variables_to_recode <- c(
   "IRDSTNRV30", "IRDSTHOP30", "IRDSTRST30", "IRDSTCHR30", "IRDSTNGD30", 
   "IRDSTNRV12", "IRDSTHOP12", "IRDSTRST12", "IRDSTCHR12", "IRDSTEFF12", "IRDSTNGD12"
@@ -54,7 +58,7 @@ cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = T
 # Combining depression and anxiety scores
 cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
 
-## INSURANCE DATA RECODE
+## INSURANCE & DEMOGRAPHIC RECODE
 data_subset_health <- cleaned_data %>%
   mutate(
     education_level = case_when(
@@ -84,13 +88,23 @@ data_subset_health <- cleaned_data %>%
       HLTINALC == 2 & HLTINDRG == 1 & HLTINMNT == 2 ~ 7, #covers for drugs only
       HLTINALC == 2 & HLTINDRG == 2 & HLTINMNT == 1 ~ 8, #covers for mental health only
       TRUE ~ NA_real_
+    ),
+    college_educated = case_when(
+      education_level == 5 | education_level == 6 ~ 1, # college educated
+      education_level == 1 | education_level == 2 | education_level == 3 | education_level == 4 ~ 2, # not college educated
+      TRUE ~ NA_real_
+    ),
+    health_binary = case_when(
+      HEALTH2 == 1 | HEALTH2 == 2 ~ 1, # good health
+      HEALTH2 == 3 | HEALTH2 == 4 ~ 2, # bad health
+      TRUE ~ NA_real_
     )
   )
 
 
 
 #Create subset with variables desired
-final_data <- data_subset_health[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAGE",
+final_data <- data_subset_health[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAG6",
                                      "HEALTH2", "education_level", "IRSEX",
                                      "NEWRACE2", "SEXRACE", "depression_score", "anxiety_score", 
                                      
@@ -103,24 +117,7 @@ final_data <- data_subset_health[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAGE"
                                      "COMHRXDL2", "COMHSVHLT2")]
 
 # remove unnecessary variables from environment
-rm(data, cleaned_data, data_subset, data_subset_health, anxiety_variables, depression_variables, variables_to_recode, more_variables_to_recode, var)
-
-## DEMOGRAPHIC DATA RECODE
-final_data <- final_data %>%
-  mutate(
-    # college education yes/no
-    college_educated = case_when(
-      education_level == 5 | education_level == 6 ~ 1, # college educated
-      education_level == 1 | education_level == 2 | education_level == 3 | education_level == 4 ~ 2, # not college educated
-      TRUE ~ NA_real_
-    ),
-    
-    # health good/bad
-    health_binary = case_when(
-      HEALTH2 == 1 | HEALTH2 == 2 ~ 1, # good health
-      HEALTH2 == 3 | HEALTH2 == 4 ~ 2, # bad health
-      TRUE ~ NA_real_
-    )
-  )
+# rm(data, cleaned_data, data_subset, data_subset_health, anxiety_variables, depression_variables, variables_to_recode, more_variables_to_recode, var)
 
 #### PART 2: EXPLORATORY DATA ANALYSIS
+
