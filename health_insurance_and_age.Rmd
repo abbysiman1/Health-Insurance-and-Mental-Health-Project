@@ -12,7 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## R Markdown
 
 
-```{r 4810}
+```{r createfile}
+
 library(dplyr)
 library(readr)
 library(corrplot)
@@ -25,13 +26,17 @@ data_2023 <- read.csv(file_path)
 # Parsing the data
 data_2023 <- read_delim(file_path, delim = "\t")
 
+```
 
+```{r over18}
 
 #Create a new subset where people are over 18
 data_subset_adults <- data_2023[data_2023$CATAG6>1, ]
 data_subset_adults2 <- data_subset_adults[data_subset_adults$IRWRKSTAT<50, ]
 
+```
 
+```{r mentalhealth}
 
 #Mental Health recoding
 variables_to_recode <- c(
@@ -67,11 +72,15 @@ cleaned_data$depression_score <- rowSums(cleaned_data[depression_variables], na.
 anxiety_variables <- c("IRDSTNRV30","IRDSTRST30","IRDSTNRV12","IRDSTRST12","IRIMPGOUT","IRIMPSOC")
 # Create a new variable in cleaned_data that sums the anxiety-related variables
 cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = TRUE)
+# Combining depression and anxiety scores
+cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
 
+```
 
+```{r mutate}
 
-#Recode health insurance data
-data_subset_health <- cleaned_data %>%
+#Create education level, insurance type, and private coverage 
+data_subset_one <- cleaned_data %>%
   mutate(
     education_level = case_when(
       IREDUHIGHST2 == 1 | IREDUHIGHST2 == 2 | IREDUHIGHST2 == 3 | IREDUHIGHST2 == 4 ~ 1, #Less than high school
@@ -100,23 +109,61 @@ data_subset_health <- cleaned_data %>%
         HLTINALC == 2 & HLTINDRG == 1 & HLTINMNT == 2 ~ 7, #covers for drugs only
         HLTINALC == 2 & HLTINDRG == 2 & HLTINMNT == 1 ~ 8, #covers for mental health only
         TRUE ~ NA_real_
-      )
-    )
-  
+    ),
+      college_educated = case_when(
+      education_level == 5 | education_level == 6 ~ 1, # college educated
+      education_level == 1 | education_level == 2 | education_level == 3 | education_level == 4 ~ 2, # not college educated
+      TRUE ~ NA_real_
+    ),
+      health_binary = case_when(
+      HEALTH2 == 1 | HEALTH2 == 2 ~ 1, # good health
+      HEALTH2 == 3 | HEALTH2 == 4 ~ 2, # bad health
+      TRUE ~ NA_real_
+    ) 
+  )
 
+```  
+```{r rename}
+
+colnames(data_subset_one)[colnames(data_subset_one) == "QUESTID2"] <- "id"
+colnames(data_subset_one)[colnames(data_subset_one) == "CATAG6"] <- "age"
+colnames(data_subset_one)[colnames(data_subset_one) == "HEALTH2"] <- "health"
+colnames(data_subset_one)[colnames(data_subset_one) == "IRSEX"] <- "sex"
+colnames(data_subset_one)[colnames(data_subset_one) == "NEWRACE2"] <- "race"
+colnames(data_subset_one)[colnames(data_subset_one) == "SEXRACE"] <- "sex_race"
+colnames(data_subset_one)[colnames(data_subset_one) == "HLCNOTYR"] <- "insurance_12"
+colnames(data_subset_one)[colnames(data_subset_one) == "IRINSUR4"] <- "insurance_binary"
+colnames(data_subset_one)[colnames(data_subset_one) == "GOVTPROG"] <- "govt_prog"
+colnames(data_subset_one)[colnames(data_subset_one) == "POVERTY3"] <- "poverty"
+colnames(data_subset_one)[colnames(data_subset_one) == "IRWRKSTAT"] <- "employment"
+colnames(data_subset_one)[colnames(data_subset_one) == "COCLNEGMH"] <- "covid_mental"
+colnames(data_subset_one)[colnames(data_subset_one) == "COCLFINANC"] <- "covid_financial"
+colnames(data_subset_one)[colnames(data_subset_one) == "COMHAPTDL2"] <- "covid_appt"
+colnames(data_subset_one)[colnames(data_subset_one) == "COMHTELE2"] <- "covid_tele"
+colnames(data_subset_one)[colnames(data_subset_one) == "COMHAPTDL2"] <- "covid_appt"
+colnames(data_subset_one)[colnames(data_subset_one) == "COMHRXDL2"] <- "covid_prescrip"
+colnames(data_subset_one)[colnames(data_subset_one) == "COMHSVHLT2"] <- "covid_care"
+
+```
+
+```{r finaldata}
 
 #Create subset with variables desired
-final_data <- data_subset_health[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAG6",
-                                     "HEALTH2", "education_level", "IRSEX",
-                                     "NEWRACE2", "SEXRACE", "depression_score", "anxiety_score", 
+final_data <- data_subset_one[, c("id", "age", "health", "education_level", 
+                                  "sex", "race", "sex_race", "college_educated",
+                                  "health_binary",
                                      
-                                     "insurance_type", "GRPHLTIN", "private_coverage", 
-                                     "HLCNOTYR", "IRINSUR4",
+                                  "insurance_type", "private_coverage","insurance_12", 
+                                  "insurance_binary",
                                      
-                                     "GOVTPROG", "POVERTY3", "IRWRKSTAT",
+                                  "govt_prog", "poverty", "employment",
                                      
-                                     "COCLNEGMH", "COCLFINANC", "COMHTELE2", "COMHAPTDL2",
-                                     "COMHRXDL2", "COMHSVHLT2")]
+                                  "covid_mental", "covid_financial", "covid_tele", "covid_appt",
+                                  "covid_prescrip", "covid_care",
+                                     
+                                  "depression_score", "anxiety_score", "mental_health_score")]
+final_data
+
 
 ```
 
