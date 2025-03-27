@@ -2,7 +2,7 @@
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
-load("~/Desktop/school/Spring 2025/STAT 4810/Project/R Files/NSDUH_2023.Rdata")
+load("~/Desktop/school/Spring 2025/STAT 4810/Project/Capstone_rproj/NSDUH_2023.Rdata")
 data <- puf2023_102124
 rm(puf2023_102124)
 
@@ -134,9 +134,6 @@ final_data <- data_subset_one[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAG6",
                                      "COCLNEGMH", "COCLFINANC", "COMHTELE2", "COMHAPTDL2",
                                      "COMHRXDL2", "COMHSVHLT2", "ses_score")]
 
-# remove unnecessary variables from environment
-# rm(data, cleaned_data, data_subset, data_subset_health, anxiety_variables, depression_variables, variables_to_recode, more_variables_to_recode, var)
-
 ## VARIABLE RENAME
 colnames(data_subset_one)[colnames(data_subset_one) == "QUESTID2"] <- "id"
 colnames(data_subset_one)[colnames(data_subset_one) == "CATAG6"] <- "age"
@@ -172,16 +169,35 @@ final_data <- data_subset_one[, c("id", "age", "health", "education_level",
                                   
                                   "depression_score", "anxiety_score", "mental_health_score", "ses_score")]
 
+# remove unnecessary variables from environment
+# rm(data, cleaned_data, data_subset, data_subset_one, data_subset_adults, data_subset_adults2, data_subset_health, anxiety_variables, depression_variables, ses_variables, variables_to_recode, more_variables_to_recode, var)
+
 #### PART 2: LINEAR REGRESSION & EDA
 # simple LR to compare race & insurance coverage
 race_insurance <- lm(formula = insurance_binary ~ race, data = final_data)
 summary(race_insurance) # significant
-ggplot(data = final_data, mapping = aes(x = race, group = insurance_binary, fill = insurance_binary)) +
+ggplot(data = final_data, mapping = aes(x = race, fill = as.factor(insurance_binary))) +
   geom_bar() +
+  theme_bw() +
+  scale_x_continuous(breaks = 1:7) +
+  scale_fill_manual(
+    values = c("1" = "violetred", "2" = "palevioletred"),
+    name = "Health Insurance",
+    labels = c("Insured", "Uninsured")) +
+  theme(legend.position = "bottom")
 
 # simple LR to compare SES & insurance coverage
 ses_insurance <- lm(formula = insurance_binary ~ ses_score, data = final_data)
 summary(ses_insurance) # significant
+ggplot(data = final_data, mapping = aes(x = ses_score, fill = as.factor(insurance_binary))) +
+  geom_bar() +
+  theme_bw() +
+  scale_x_continuous(breaks = 1:10) +
+  scale_fill_manual(
+    values = c("1" = "seagreen1", "2" = "seagreen"),
+    name = "Health Insurance",
+    labels = c("Insured", "Uninsured")) +
+  theme(legend.position = "bottom")
 
 # multiple LR to compare race and SES to insurance coverage
 mlr_mod <- lm(formula = insurance_binary ~ race + ses_score, data = final_data)
