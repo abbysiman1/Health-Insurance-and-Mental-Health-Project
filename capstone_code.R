@@ -58,6 +58,24 @@ cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = T
 # Combining depression and anxiety scores
 cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
 
+## SES RECODE
+# change the order of IRWRKSTAT
+cleaned_data <- cleaned_data %>% mutate(
+    IRWRKSTAT2 = case_when(
+      IRWRKSTAT == 4 ~ 1,
+      IRWRKSTAT == 3 ~ 2,
+      IRWRKSTAT == 2 ~ 3,
+      IRWRKSTAT == 1 ~ 4,
+      TRUE ~ NA_real_
+    )
+  )
+
+# create a running total for SES
+ses_variables <- c("GOVTPROG", "POVERTY3", "IRWRKSTAT2")
+
+# create a new variable in cleaned_data that summarizes SES variables
+cleaned_data$ses_score <- rowSums(cleaned_data[ses_variables], na.rm = TRUE)
+
 ## INSURANCE & DEMOGRAPHIC RECODE
 data_subset_one <- cleaned_data %>%
   mutate(
@@ -104,7 +122,7 @@ data_subset_one <- cleaned_data %>%
 
 
 #Create subset with variables desired
-final_data <- data_subset_health[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAG6",
+final_data <- data_subset_one[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAG6",
                                      "HEALTH2", "education_level", "IRSEX",
                                      "NEWRACE2", "SEXRACE", "depression_score", "anxiety_score", 
                                      
@@ -114,7 +132,7 @@ final_data <- data_subset_health[, c("QUESTID2", "FILEDATE", "COUTYP4", "CATAG6"
                                      "GOVTPROG", "POVERTY3", "IRWRKSTAT",
                                      
                                      "COCLNEGMH", "COCLFINANC", "COMHTELE2", "COMHAPTDL2",
-                                     "COMHRXDL2", "COMHSVHLT2")]
+                                     "COMHRXDL2", "COMHSVHLT2", "ses_score")]
 
 # remove unnecessary variables from environment
 # rm(data, cleaned_data, data_subset, data_subset_health, anxiety_variables, depression_variables, variables_to_recode, more_variables_to_recode, var)
@@ -152,12 +170,23 @@ final_data <- data_subset_one[, c("id", "age", "health", "education_level",
                                   "covid_mental", "covid_financial", "covid_tele", "covid_appt",
                                   "covid_prescrip", "covid_care",
                                   
-                                  "depression_score", "anxiety_score", "mental_health_score")]
+                                  "depression_score", "anxiety_score", "mental_health_score", "ses_score")]
 
 #### PART 2: LINEAR REGRESSION & EDA
-## simple linear regression to compare race & insurance coverage
+# simple LR to compare race & insurance coverage
+race_insurance <- lm(formula = insurance_binary ~ race, data = final_data)
+summary(race_insurance) # significant
+ggplot(data = final_data, mapping = aes(x = race, group = insurance_binary, fill = insurance_binary)) +
+  geom_bar() +
 
-## simple linear regression to compare SES & insurance coverage
+# simple LR to compare SES & insurance coverage
+ses_insurance <- lm(formula = insurance_binary ~ ses_score, data = final_data)
+summary(ses_insurance) # significant
 
-## multiple LR to compare race and SES to insurance coverage
+# multiple LR to compare race and SES to insurance coverage
+mlr_mod <- lm(formula = insurance_binary ~ race + ses_score, data = final_data)
+summary(mlr_mod) # significant
 
+# simple LR to compare insurance coverage to mental health
+insurance_mh <- lm(formula = mental_health_score ~ insurance_binary, data = final_data)
+summary(insurance_mh) # significant
