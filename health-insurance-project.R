@@ -1,14 +1,10 @@
 # Health Insurance Project Code
 
-# Install important packages
-
+# Install important packages and libraries
 install.packages('tidyverse',dependency=T)
-
 library(readr)
 library(dplyr)
 library(ggplot2)
-
-# Load important packages
 
 # Establishing file paths
 file_path <- "~/Downloads/4810Project/NSDUH_2023_Tab.txt"
@@ -142,5 +138,91 @@ sum(cleaned_data$depression_status == 1)
 sum(cleaned_data$anxiety_status == 1)
 sum(cleaned_data$mental_health_status == 1)
 
+# Recoding demographic variables
+#Create a new subset where people are over 18
+cleaned_data <- cleaned_data[cleaned_data$CATAG6>1, ]
+cleaned_data <- cleaned_data[cleaned_data$IRWRKSTAT<50, ]
 
+#Create education level, insurance type, and private coverage 
+#Create education level, insurance type, and private coverage 
+#Create education level, insurance type, and private coverage 
+cleaned_data <- cleaned_data %>%
+  mutate(
+    education_level = case_when(
+      IREDUHIGHST2 == 1 | IREDUHIGHST2 == 2 | IREDUHIGHST2 == 3 | IREDUHIGHST2 == 4 ~ 1, #Less than high school
+      IREDUHIGHST2 == 5 | IREDUHIGHST2 == 6 | IREDUHIGHST2 == 7 ~ 2, #some high school, no diploma
+      IREDUHIGHST2 == 8 ~ 3, #high school diploma / GED
+      IREDUHIGHST2 == 9 ~ 4, #some college
+      IREDUHIGHST2 == 10 ~ 5, #associates degree
+      IREDUHIGHST2 == 11 ~ 6, #college graduate or higher
+      TRUE ~ NA_real_
+    ),
+    insurance_type = case_when(
+      IRMEDICR == 1 ~ 1, #covered by medicare
+      IRMCDCHP == 1 ~ 2, #covered by medicaid/chip
+      IRPRVHLT == 1 & GRPHLTIN == 1 ~ 3, #covered by private, through employer
+      IRPRVHLT == 1 & GRPHLTIN == 2 ~ 4, #covered by private, elsewhere
+      IRINSUR4 == 2 ~ 5, #not covered
+      TRUE ~ NA_real_
+    ),
+    private_coverage = case_when(
+      IRPRVHLT == 2 ~ 1, #not covered
+      HLTINALC == 1 & HLTINDRG == 1 & HLTINMNT == 1 ~ 2, #covers for alcohol, drug, and mental health
+      HLTINALC == 1 & HLTINDRG == 1 & HLTINMNT == 2 ~ 3, #covers for alcohol and drug
+      HLTINALC == 1 & HLTINDRG == 2 & HLTINMNT == 1 ~ 4, #covers for alcohol and mental health
+      HLTINALC == 2 & HLTINDRG == 1 & HLTINMNT == 1 ~ 5, #covers for drugs and mental health
+      HLTINALC == 1 & HLTINDRG == 2 & HLTINMNT == 2 ~ 6, #covers for alcohol only
+      HLTINALC == 2 & HLTINDRG == 1 & HLTINMNT == 2 ~ 7, #covers for drugs only
+      HLTINALC == 2 & HLTINDRG == 2 & HLTINMNT == 1 ~ 8, #covers for mental health only
+      TRUE ~ NA_real_
+    ),
+    college_educated = case_when(
+      education_level == 5 | education_level == 6 ~ 1, # college educated
+      education_level == 1 | education_level == 2 | education_level == 3 | education_level == 4 ~ 2, # not college educated
+      TRUE ~ NA_real_
+    ),
+    health_binary = case_when(
+      HEALTH2 == 1 | HEALTH2 == 2 ~ 1, # good health
+      HEALTH2 == 3 | HEALTH2 == 4 ~ 2, # bad health
+      TRUE ~ NA_real_
+    ) 
+  )
+
+# rename variables
+colnames(cleaned_data)[colnames(cleaned_data) == "QUESTID2"] <- "id"
+colnames(cleaned_data)[colnames(cleaned_data) == "CATAG6"] <- "age"
+colnames(cleaned_data)[colnames(cleaned_data) == "HEALTH2"] <- "health"
+colnames(cleaned_data)[colnames(cleaned_data) == "IRSEX"] <- "sex"
+colnames(cleaned_data)[colnames(cleaned_data) == "NEWRACE2"] <- "race"
+colnames(cleaned_data)[colnames(cleaned_data) == "SEXRACE"] <- "sex_race"
+colnames(cleaned_data)[colnames(cleaned_data) == "HLCNOTYR"] <- "insurance_12"
+colnames(cleaned_data)[colnames(cleaned_data) == "IRINSUR4"] <- "insurance_binary"
+colnames(cleaned_data)[colnames(cleaned_data) == "GOVTPROG"] <- "govt_prog"
+colnames(cleaned_data)[colnames(cleaned_data) == "POVERTY3"] <- "poverty"
+colnames(cleaned_data)[colnames(cleaned_data) == "IRWRKSTAT"] <- "employment"
+colnames(cleaned_data)[colnames(cleaned_data) == "COCLNEGMH"] <- "covid_mental"
+colnames(cleaned_data)[colnames(cleaned_data) == "COCLFINANC"] <- "covid_financial"
+colnames(cleaned_data)[colnames(cleaned_data) == "COMHAPTDL2"] <- "covid_appt"
+colnames(cleaned_data)[colnames(cleaned_data) == "COMHTELE2"] <- "covid_tele"
+colnames(cleaned_data)[colnames(cleaned_data) == "COMHAPTDL2"] <- "covid_appt"
+colnames(cleaned_data)[colnames(cleaned_data) == "COMHRXDL2"] <- "covid_prescrip"
+colnames(cleaned_data)[colnames(cleaned_data) == "COMHSVHLT2"] <- "covid_care"
+
+# drop mental health question variables
+
+#Create subset with variables desired
+final_data <- cleaned_data[, c("id", "age", "health", "education_level", 
+                                  "sex", "race", "sex_race", "college_educated",
+                                  "health_binary",
+                                  
+                                  "insurance_type", "private_coverage","insurance_12", 
+                                  "insurance_binary",
+                                  
+                                  "govt_prog", "poverty", "employment",
+                                  
+                                  "covid_mental", "covid_financial", "covid_tele", "covid_appt",
+                                  "covid_prescrip", "covid_care",
+                                  
+                                  "depression_score", "anxiety_score", "mental_health_score",
+                               "depression_status", "anxiety_status", "mental_health_status")]
 
