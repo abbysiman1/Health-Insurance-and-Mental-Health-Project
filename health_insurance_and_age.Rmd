@@ -68,12 +68,31 @@ for (var in more_variables_to_recode) {
 depression_variables <- c("IRDSTHOP30","IRDSTCHR30","IRDSTNGD30","IRDSTHOP12","IRDSTCHR12","IRDSTEFF12","IRDSTNGD12","IRIMPHHLD","IRIMPWORK")
 # Create a new variable in cleaned_data that sums the depression-related variables
 cleaned_data$depression_score <- rowSums(cleaned_data[depression_variables], na.rm = TRUE)
+# Calculate mental health score and classify mental health status as 0 or 1
+cleaned_data <- cleaned_data %>%
+  mutate(
+    depression_status = ifelse(depression_score > 36, 1, 0)  
+  )
+sum(is.na(cleaned_data$depression_score))
 # Creating a running total for the anxiety column
 anxiety_variables <- c("IRDSTNRV30","IRDSTRST30","IRDSTNRV12","IRDSTRST12","IRIMPGOUT","IRIMPSOC")
 # Create a new variable in cleaned_data that sums the anxiety-related variables
 cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = TRUE)
+# Calculate mental health score and classify mental health status as 0 or 1
+cleaned_data <- cleaned_data %>%
+  mutate(
+    anxiety_status = ifelse(anxiety_score > 24, 1, 0)  
+  )
 # Combining depression and anxiety scores
 cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
+# Calculate mental health score and classify mental health status as 0 or 1
+cleaned_data <- cleaned_data %>%
+  mutate(
+    mental_health_status = ifelse(mental_health_score > 60, 1, 0)  # 1 for Poor Mental Health, 0 for Good Mental Health
+  )
+sum(cleaned_data$depression_status == 1)
+sum(cleaned_data$anxiety_status == 1)
+sum(cleaned_data$mental_health_status == 1)
 
 ```
 
@@ -161,7 +180,8 @@ final_data <- data_subset_one[, c("id", "age", "health", "education_level",
                                   "covid_mental", "covid_financial", "covid_tele", "covid_appt",
                                   "covid_prescrip", "covid_care",
                                      
-                                  "depression_score", "anxiety_score", "mental_health_score")]
+                                  "depression_score", "anxiety_score", "mental_health_score", 
+                                  "depression_status", "anxiety_status", "mental_health_status")]
 final_data
 
 
