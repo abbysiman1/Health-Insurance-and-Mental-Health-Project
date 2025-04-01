@@ -13,16 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r createfile}
-
 library(dplyr)
 library(readr)
 library(corrplot)
 library(ggplot2)
+library(tidyverse)
 
 #Load File
 file_path <- "/Users/summerjohnson/Desktop/4810 Group/NSDUH_2023_Tab.txt"
 # Reading data
-data_2023 <- read.csv(file_path)
+data_2023 <- read.csv("/Users/summerjohnson/Desktop/4810 Group/NSDUH_2023_Tab.txt")
 # Parsing the data
 data_2023 <- read_delim(file_path, delim = "\t")
 
@@ -111,11 +111,11 @@ data_subset_one <- cleaned_data %>%
       TRUE ~ NA_real_
     ),
     insurance_type = case_when(
+      IRINSUR4 == 2 ~ 0, #not covered
       IRMEDICR == 1 ~ 1, #covered by medicare
       IRMCDCHP == 1 ~ 2, #covered by medicaid/chip
       IRPRVHLT == 1 & GRPHLTIN == 1 ~ 3, #covered by private, through employer
       IRPRVHLT == 1 & GRPHLTIN == 2 ~ 4, #covered by private, elsewhere
-      IRINSUR4 == 2 ~ 5, #not covered
       TRUE ~ NA_real_
     ),
       private_coverage = case_when(
@@ -138,10 +138,16 @@ data_subset_one <- cleaned_data %>%
       HEALTH2 == 1 | HEALTH2 == 2 ~ 1, # good health
       HEALTH2 == 3 | HEALTH2 == 4 ~ 2, # bad health
       TRUE ~ NA_real_
-    ) 
+    ), 
+    coverage_01 = case_when(
+      IRINSUR4 == 2 ~ 0, #not covered
+      IRINSUR4 == 1 ~ 1, #covered
+      TRUE ~ NA_real_
+    )
   )
 
 ```  
+
 ```{r rename}
 
 colnames(data_subset_one)[colnames(data_subset_one) == "QUESTID2"] <- "id"
@@ -173,7 +179,7 @@ final_data <- data_subset_one[, c("id", "age", "health", "education_level",
                                   "health_binary",
                                      
                                   "insurance_type", "private_coverage","insurance_12", 
-                                  "insurance_binary",
+                                  "insurance_binary", "coverage_01",
                                      
                                   "govt_prog", "poverty", "employment",
                                      
@@ -186,5 +192,84 @@ final_data
 
 
 ```
+
+```{r chi2_race}
+#Is there a significant difference in insurance type and coverage between different races?
+
+#Remove empty variables
+final_data_clean1 <- final_data[!is.na(final_data$insurance_type) & !is.na(final_data$race), ]
+
+#Chi Square Test
+chi_race_insurance_test <- chisq.test(final_data_clean1$insurance_type, final_data_clean1$race)
+chi_race_insurance_test
+
+#Contingency Table
+table(final_data_clean1$insurance_type, final_data_clean1$race)
+
+#Plot
+ggplot(final_data_clean1, aes(x = race, fill = insurance_type)) +
+  geom_bar(position = "fill") +
+    labs(title = "Insurance Type Distribution by Race",
+       y = "Proportion", x = "Race") +
+  scale_x_discrete(guide = guide_axis(angle=30),
+                   labels = c("1" = "White",
+                              "2" = "African American",
+                              "3" = "Native American",
+                              "4" = "Native Hawaiian",
+                              "5" = "Asian",
+                              "6" = "More than one race",
+                              "7" = "Hispanic")) +
+  scale_fill_discrete(name = "Insurance Coverage",
+                      labels = c("0" = "Not Covered",
+                                 "1" = "Medicare",
+                                 "2" = "Medicaid/Chip",
+                                 "3" = "Private, employer",
+                                 "4" = "Private, elsewhere")) +
+      theme_minimal() 
+  
+```
+
+
+```{r chi2_poverty}
+#Is there a significant difference in insurance type and coverage between different poverty levels?
+final_data_clean2 <- final_data[!is.na(final_data$insurance_type) & !is.na(final_data$poverty), ]
+
+#Chi Square Test
+chi_poverty_insurance_test <- chisq.test(final_data_clean1$insurance_type, final_data_clean1$poverty)
+chi_poverty_insurance_test
+
+#Contingency Table
+table(final_data_clean2$insurance_type, final_data_clean2$poverty)
+
+#Plot
+ggplot(final_data_clean2, aes(x = poverty, fill = insurance_type)) +
+  geom_bar(position = "fill") +
+    labs(title = "Insurance Type Distribution by Poverty Level",
+       y = "Proportion", x = "Poverty Level") +
+    scale_x_discrete(guide = guide_axis(angle=20),
+                   labels = c("1" = "Living in Poverty",
+                              "2" = "Income up to 2x FPL",
+                              "3" = "Income More than 2x FPL")) +
+  scale_fill_discrete(name = "Insurance Coverage",
+                      labels = c("0" = "Not Covered",
+                                 "1" = "Medicare",
+                                 "2" = "Medicaid/Chip",
+                                 "3" = "Private, employer",
+                                 "4" = "Private, elsewhere")) +
+  theme_minimal() 
+
+```
+
+```{r manova_mental}
+#Is there a significant difference in depression status and anxiety status between those with/without insurance? 
+
+manova_result <- manova(cbind(depression_status, anxiety_status) ~ coverage_01, data = final_data)
+summary(manova_result)
+
+```
+
+
+
+
 
 
