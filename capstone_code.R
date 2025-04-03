@@ -11,7 +11,7 @@ rm(puf2023_102124)
 data_subset <- select(data, QUESTID2, FILEDATE, COUTYP4, CATAG6, HEALTH2, IREDUHIGHST2, IRSEX, NEWRACE2, SEXRACE, IRMEDICR, IRMCDCHP, IRPRVHLT, GRPHLTIN, HLTINALC, HLTINDRG, HLTINMNT, HLCNOTYR, IRINSUR4, GOVTPROG, INCOME, POVERTY3, IRWRKSTAT, COCLNEGMH, COCLFINANC, COMHTELE2, COMHAPTDL2, COMHRXDL2, COMHSVHLT2, IRDSTNRV30, IRDSTHOP30, IRDSTRST30, IRDSTCHR30, IRDSTNGD30, IRDSTNRV12, IRDSTHOP12, IRDSTRST12, IRDSTCHR12, IRDSTEFF12, IRDSTNGD12, IRIMPGOUT, IRIMPSOC, IRIMPHHLD, IRIMPWORK)
 
 #Create a new subset where people are over 18
-data_subset_adults <- data[data$CATAG6>1, ]
+data_subset_adults <- data_subset[data_subset$CATAG6>1, ]
 data_subset_adults2 <- data_subset_adults[data_subset_adults$IRWRKSTAT<50, ]
 
 ## MENTAL HEALTH RECODE
@@ -25,8 +25,8 @@ cleaned_data <- data_subset_adults2
 # Recode each variable and update it directly in the cleaned_data dataset
 for (var in variables_to_recode) {
   cleaned_data[[var]] <- ifelse(
-    data_subset[[var]] == 99, 99, # Keep "LEGITIMATE SKIP" as is
-    6 - data_subset[[var]]        # Reverse the scale for all other values
+    data_subset_adults2[[var]] == 99, 99, # Keep "LEGITIMATE SKIP" as is
+    6 - data_subset_adults2[[var]]        # Reverse the scale for all other values
   )
 }
 # List of variables you want to recode
@@ -172,37 +172,6 @@ final_data <- data_subset_one[, c("id", "age", "health", "education_level",
 # remove unnecessary variables from environment
 # rm(data, cleaned_data, data_subset, data_subset_one, data_subset_adults, data_subset_adults2, data_subset_health, anxiety_variables, depression_variables, ses_variables, variables_to_recode, more_variables_to_recode, var)
 
-#### PART 2: LINEAR REGRESSION & EDA
-# simple LR to compare race & insurance coverage
-race_insurance <- lm(formula = insurance_binary ~ race, data = final_data)
-summary(race_insurance) # significant
-ggplot(data = final_data, mapping = aes(x = race, fill = as.factor(insurance_binary))) +
-  geom_bar() +
-  theme_bw() +
-  scale_x_continuous(breaks = 1:7) +
-  scale_fill_manual(
-    values = c("1" = "violetred", "2" = "palevioletred"),
-    name = "Health Insurance",
-    labels = c("Insured", "Uninsured")) +
-  theme(legend.position = "bottom")
-
-# simple LR to compare SES & insurance coverage
-ses_insurance <- lm(formula = insurance_binary ~ ses_score, data = final_data)
-summary(ses_insurance) # significant
-ggplot(data = final_data, mapping = aes(x = ses_score, fill = as.factor(insurance_binary))) +
-  geom_bar() +
-  theme_bw() +
-  scale_x_continuous(breaks = 1:10) +
-  scale_fill_manual(
-    values = c("1" = "seagreen1", "2" = "seagreen"),
-    name = "Health Insurance",
-    labels = c("Insured", "Uninsured")) +
-  theme(legend.position = "bottom")
-
-# multiple LR to compare race and SES to insurance coverage
-mlr_mod <- lm(formula = insurance_binary ~ race + ses_score, data = final_data)
-summary(mlr_mod) # significant
-
-# simple LR to compare insurance coverage to mental health
-insurance_mh <- lm(formula = mental_health_score ~ insurance_binary, data = final_data)
-summary(insurance_mh) # significant
+#### PART 2: MULTIPLE LINEAR REGRESSION
+model <- lm(mental_health_score ~ race + insurance_type + poverty + education_level, data = final_data)
+summary(model)
