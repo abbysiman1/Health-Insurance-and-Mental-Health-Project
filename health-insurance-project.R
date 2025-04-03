@@ -2,9 +2,16 @@
 
 # Install important packages and libraries
 install.packages('tidyverse',dependency=T)
+install.packages("ggcorrplot")
+install.packages("stargazer")
+install.packages("gridExtra")
+library(stargazer)
+library(ggcorrplot)
 library(readr)
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
+
 
 # Establishing file paths
 file_path <- "~/Downloads/4810Project/NSDUH_2023_Tab.txt"
@@ -37,6 +44,8 @@ head(data_subset)
 # 2 = A little of the time
 # 1 = None of the time
 # 0 = LEGITIMATE SKIP
+
+
 
 
 variables_to_recode <- c(
@@ -208,6 +217,7 @@ colnames(cleaned_data)[colnames(cleaned_data) == "COMHAPTDL2"] <- "covid_appt"
 colnames(cleaned_data)[colnames(cleaned_data) == "COMHRXDL2"] <- "covid_prescrip"
 colnames(cleaned_data)[colnames(cleaned_data) == "COMHSVHLT2"] <- "covid_care"
 
+
 # drop mental health question variables
 
 #Create subset with variables desired
@@ -225,4 +235,208 @@ final_data <- cleaned_data[, c("id", "age", "health", "education_level",
                                   
                                   "depression_score", "anxiety_score", "mental_health_score",
                                "depression_status", "anxiety_status", "mental_health_status")]
+# covid care 
+final_data <- final_data %>%
+  filter(!is.na(covid_tele) & covid_tele %in% c(1, 2) &
+           !is.na(covid_appt) & covid_appt %in% c(1, 2) &
+           !is.na(covid_prescrip) & covid_prescrip %in% c(1, 2) &
+           !is.na(covid_care) & covid_care %in% c(1, 2)) %>%
+  mutate(
+    covid_tele = ifelse(covid_tele == 1, 1, 0),
+    covid_appt = ifelse(covid_appt == 1, 1, 0),
+    covid_prescrip = ifelse(covid_prescrip == 1, 1, 0),
+    covid_care = ifelse(covid_care == 1, 1, 0)
+  )
 
+# Loop through each column in final_data and print unique values
+for (col_name in colnames(final_data)) {
+  cat("Unique values for", col_name, ":\n")
+  print(unique(final_data[[col_name]]))
+  cat("\n") # Add a blank line for better readability
+}
+# control + shift c to comment and uncomment
+
+# # Replace specified values with NA for clarity
+# final_data$insurance_12[final_data$insurance_12 %in% c(85, 94, 97, 98, 99)] <- NA
+# 
+# # Drop rows where insurance_12 is NA
+# final_data <- final_data[!is.na(final_data$insurance_12), ]
+# 
+# final_data <- na.omit(final_data)
+# 
+# # Conducting Exploratory Data Analysis
+# summary(final_data)
+
+# Visualizing Categorical Variables
+# Bar plot for categorical variables
+barplot(table(final_data$sex), main="Sex Distribution", col="lightblue")
+barplot(table(final_data$race), main="Race Distribution", col="lightgreen")
+barplot(table(final_data$employment), main="Employment Status", col="lightcoral")
+
+# Boxplot for mental health score by employment status
+boxplot(mental_health_score ~ employment, data=final_data, main="Mental Health Score by Employment Status", xlab="Employment Status", ylab="Mental Health Score")
+
+# Boxplot for mental health score by employment status
+boxplot(mental_health_score ~ race, data=final_data, main="Mental Health Score by Race", xlab="Race", ylab="Mental Health Score")
+
+# Boxplot for mental health score by employment status
+boxplot(insurance_12 ~ race, data=final_data, main="Mental Health Score by Insurance Status", xlab="Insurance Status Past 12", ylab="Mental Health Score")
+
+# For those who answered the COVID questions 
+
+# Check unique values to verify
+sapply(final_data[, c("covid_tele", "covid_appt", "covid_prescrip", "covid_care")], unique)
+
+# Summarize mean scores by each factor
+final_data %>%
+  group_by(covid_tele) %>%
+  summarise(across(c("depression_score", "anxiety_score", "mental_health_score"), 
+                   mean, na.rm = TRUE))
+
+final_data %>%
+  group_by(covid_appt) %>%
+  summarise(across(c("depression_score", "anxiety_score", "mental_health_score"), 
+                   mean, na.rm = TRUE))
+
+final_data %>%
+  group_by(covid_prescrip) %>%
+  summarise(across(c("depression_score", "anxiety_score", "mental_health_score"), 
+                   mean, na.rm = TRUE))
+
+final_data %>%
+  group_by(covid_care) %>%
+  summarise(across(c("depression_score", "anxiety_score", "mental_health_score"), 
+                   mean, na.rm = TRUE))
+
+final_data %>%
+  count(depression_status)
+
+final_data %>%
+  count(anxiety_status)
+
+final_data %>%
+  count(mental_health_status)
+
+final_data %>%
+  group_by(covid_tele, depression_status) %>%
+  summarise(count = n(), .groups = "drop")
+
+final_data %>%
+  group_by(covid_appt, anxiety_status) %>%
+  summarise(count = n(), .groups = "drop")
+
+final_data %>%
+  group_by(covid_care, mental_health_status) %>%
+  summarise(count = n(), .groups = "drop")
+
+lm1 <- lm(mental_health_score ~ covid_tele + covid_appt + covid_prescrip, data = final_data)
+summary(lm1)
+
+lm2 <- lm(depression_score ~ covid_tele + covid_appt + covid_prescrip, data = final_data)
+summary(lm2)
+
+lm3 <- lm(anxiety_score ~ covid_tele + covid_appt + covid_prescrip, data = final_data)
+summary(lm3)
+
+glm1 <- glm(mental_health_status ~ covid_tele + covid_appt + covid_prescrip, 
+            data = final_data, family = binomial)
+summary(glm1)
+
+glm2 <- glm(depression_status ~ covid_tele + covid_appt + covid_prescrip, 
+            data = final_data, family = binomial)
+summary(glm2)
+
+glm3 <- glm(anxiety_status ~ covid_tele + covid_appt + covid_prescrip, 
+            data = final_data, family = binomial)
+summary(glm3)
+
+ggplot(final_data, aes(x = factor(covid_appt), y = mental_health_score)) +
+  geom_boxplot() +
+  labs(title = "Mental Health Score by Appointment Delays",
+       x = "Appointment Delayed (1=Yes, 2=No)",
+       y = "Mental Health Score") +
+  theme_minimal()
+
+# Select relevant numeric columns
+cor_matrix <- final_data %>%
+  select(mental_health_score, covid_tele, covid_appt, covid_prescrip) %>%
+  cor()
+
+# Plot correlation heatmap
+ggcorrplot(cor_matrix, method = "circle", lab = TRUE, title = "Correlation Between Mental Health Care and Score")
+
+library(ggplot2)
+
+# Coefficients for lm1
+lm1_coef <- summary(lm1)$coefficients[, 1]  # Extract coefficients (Estimate column)
+
+# Coefficient plot for lm1
+barplot(lm1_coef, main = "Coefficients for lm1", col = "lightblue", beside = TRUE, las = 2)
+
+# Repeat for lm2 and lm3
+lm2_coef <- summary(lm2)$coefficients[, 1]
+barplot(lm2_coef, main = "Coefficients for lm2", col = "lightgreen", beside = TRUE, las = 2)
+
+lm3_coef <- summary(lm3)$coefficients[, 1]
+barplot(lm3_coef, main = "Coefficients for lm3", col = "lightcoral", beside = TRUE, las = 2)
+
+# Coefficients for glm1
+glm1_coef <- summary(glm1)$coefficients[, 1]
+
+# Coefficient plot for glm1
+barplot(glm1_coef, main = "Coefficients for glm1", col = "lightblue", beside = TRUE, las = 2)
+
+# Repeat for glm2 and glm3
+glm2_coef <- summary(glm2)$coefficients[, 1]
+barplot(glm2_coef, main = "Coefficients for glm2", col = "lightgreen", beside = TRUE, las = 2)
+
+glm3_coef <- summary(glm3)$coefficients[, 1]
+barplot(glm3_coef, main = "Coefficients for glm3", col = "lightcoral", beside = TRUE, las = 2)
+
+stargazer(lm1, lm2, lm3, glm1, glm2, glm3, 
+          type = "text",  # Change to "html" or "latex" for better formatting
+          title = "Regression Results",
+          dep.var.labels = c("Mental Health Score", "Depression Score", "Anxiety Score",
+                             "Mental Health Status", "Depression Status", "Anxiety Status"),
+          covariate.labels = c("Telehealth Use", "Appointment Delay", "Prescription Access"),
+          omit.stat = c("f", "ser"),  # Omits F-stat and standard errors if unnecessary
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          digits = 3)
+# 1. ANOVA for Telehealth disruption (covid_tele)
+anova_tele <- aov(mental_health_score ~ factor(covid_tele), data = final_data)
+summary(anova_tele)
+
+# 2. ANOVA for Appointment disruption (covid_appt)
+anova_appt <- aov(mental_health_score ~ factor(covid_appt), data = final_data)
+summary(anova_appt)
+
+# 3. ANOVA for Prescription disruption (covid_prescrip)
+anova_prescrip <- aov(mental_health_score ~ factor(covid_prescrip), data = final_data)
+summary(anova_prescrip)
+
+library(ggplot2)
+library(gridExtra)
+
+# Boxplot for Telehealth disruption
+p1 <- ggplot(final_data, aes(x = factor(covid_tele), y = mental_health_score)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  labs(title = "Mental Health Score by Telehealth Disruption", x = "Telehealth Disruption", y = "Mental Health Score") +
+  theme_minimal()
+
+# Boxplot for Appointment disruption
+p2 <- ggplot(final_data, aes(x = factor(covid_appt), y = mental_health_score)) +
+  geom_boxplot(fill = "lightgreen", color = "black") +
+  labs(title = "Mental Health Score by Appointment Disruption", x = "Appointment Disruption", y = "Mental Health Score") +
+  theme_minimal()
+
+# Boxplot for Prescription disruption
+p3 <- ggplot(final_data, aes(x = factor(covid_prescrip), y = mental_health_score)) +
+  geom_boxplot(fill = "lightcoral", color = "black") +
+  labs(title = "Mental Health Score by Prescription Disruption", x = "Prescription Disruption", y = "Mental Health Score") +
+  theme_minimal()
+
+# Arrange all plots together
+grid.arrange(p1, p2, p3, ncol = 2)
+#  p-values less than 0.05 mean that the care disruption 
+# (telehealth, appointments, prescriptions, or care) has a significant 
+# effect on mental health scores.
