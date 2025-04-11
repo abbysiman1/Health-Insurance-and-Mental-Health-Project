@@ -38,61 +38,49 @@ data_subset_adults2 <- data_subset_adults[data_subset_adults$IRWRKSTAT<50, ]
 
 ```{r mentalhealth}
 
-#Mental Health recoding
+#Variables used for recoding:
 variables_to_recode <- c(
-  "IRDSTNRV30", "IRDSTHOP30", "IRDSTRST30", "IRDSTCHR30", "IRDSTNGD30", 
-  "IRDSTNRV12", "IRDSTHOP12", "IRDSTRST12", "IRDSTCHR12", "IRDSTEFF12", "IRDSTNGD12"
+  "IRDSTHOP30", "IRDSTCHR30", "IRDSTNGD30", "IRDSTHOP12",
+  "IRDSTCHR12", "IRDSTEFF12", "IRDSTNGD12", 
+                "IRDSTNRV30", "IRDSTRST30","IRDSTNRV12", 
+  "IRDSTRST12"
 )
-
 cleaned_data <- data_subset_adults2
-# Recode each variable and update it directly in the cleaned_data dataset
+#Recode each variable and update it directly in the cleaned_data dataset
 for (var in variables_to_recode) {
   cleaned_data[[var]] <- ifelse(
     data_subset_adults2[[var]] == 99, 99, # Keep "LEGITIMATE SKIP" as is
     6 - data_subset_adults2[[var]]        # Reverse the scale for all other values
   )
 }
-# List of variables you want to recode
+#List of variables you want to recode
 more_variables_to_recode <- c("IRDSTHOP30", "IRDSTCHR30", "IRDSTNGD30", "IRDSTHOP12", 
                               "IRDSTCHR12", "IRDSTEFF12", "IRDSTNGD12", "IRIMPHHLD", 
                               "IRIMPWORK", "IRDSTNRV30", "IRDSTRST30", "IRDSTNRV12", 
                               "IRDSTRST12", "IRIMPGOUT", "IRIMPSOC")
-# Recode each variable and update it directly in the cleaned_data dataset
+#Recode each variable and update it directly in the cleaned_data dataset
 for (var in more_variables_to_recode) {
   cleaned_data[[var]] <- ifelse(
     cleaned_data[[var]] == 99, 0,   # Recode "LEGITIMATE SKIP" (99) as 0
     cleaned_data[[var]]             # Keep other values as they are
   )
 }
-# Creating a running total for the depression column
+
+#Depression Score:
+#Creating a running total for the depression column
 depression_variables <- c("IRDSTHOP30","IRDSTCHR30","IRDSTNGD30","IRDSTHOP12","IRDSTCHR12","IRDSTEFF12","IRDSTNGD12","IRIMPHHLD","IRIMPWORK")
-# Create a new variable in cleaned_data that sums the depression-related variables
+#Create a new variable in cleaned_data that sums the depression-related variables
 cleaned_data$depression_score <- rowSums(cleaned_data[depression_variables], na.rm = TRUE)
-# Calculate mental health score and classify mental health status as 0 or 1
-cleaned_data <- cleaned_data %>%
-  mutate(
-    depression_status = ifelse(depression_score > 36, 1, 0)  
-  )
-sum(is.na(cleaned_data$depression_score))
-# Creating a running total for the anxiety column
+
+#Anxiety Score: 
+#Creating a running total for the anxiety column
 anxiety_variables <- c("IRDSTNRV30","IRDSTRST30","IRDSTNRV12","IRDSTRST12","IRIMPGOUT","IRIMPSOC")
-# Create a new variable in cleaned_data that sums the anxiety-related variables
+#Create a new variable in cleaned_data that sums the anxiety-related variables
 cleaned_data$anxiety_score <- rowSums(cleaned_data[anxiety_variables], na.rm = TRUE)
-# Calculate mental health score and classify mental health status as 0 or 1
-cleaned_data <- cleaned_data %>%
-  mutate(
-    anxiety_status = ifelse(anxiety_score > 24, 1, 0)  
-  )
-# Combining depression and anxiety scores
+
+#Mental Health Score: 
+#Combining depression and anxiety scores
 cleaned_data$mental_health_score <- rowSums(cleaned_data[c(depression_variables, anxiety_variables)], na.rm = TRUE)
-# Calculate mental health score and classify mental health status as 0 or 1
-cleaned_data <- cleaned_data %>%
-  mutate(
-    mental_health_status = ifelse(mental_health_score > 60, 1, 0)  # 1 for Poor Mental Health, 0 for Good Mental Health
-  )
-sum(cleaned_data$depression_status == 1)
-sum(cleaned_data$anxiety_status == 1)
-sum(cleaned_data$mental_health_status == 1)
 
 ```
 
@@ -113,9 +101,8 @@ data_subset_one <- cleaned_data %>%
     insurance_type = case_when(
       IRINSUR4 == 2 ~ 0, #not covered
       IRMEDICR == 1 ~ 1, #covered by medicare
-      IRMCDCHP == 1 ~ 2, #covered by medicaid/chip
-      IRPRVHLT == 1 & GRPHLTIN == 1 ~ 3, #covered by private, through employer
-      IRPRVHLT == 1 & GRPHLTIN == 2 ~ 4, #covered by private, elsewhere
+      IRMCDCHP == 1 ~ 2, #covered by medicaid
+      IRPRVHLT == 1 ~ 3, #covered by private
       TRUE ~ NA_real_
     ),
       private_coverage = case_when(
@@ -143,6 +130,15 @@ data_subset_one <- cleaned_data %>%
       IRINSUR4 == 2 ~ 0, #not covered
       IRINSUR4 == 1 ~ 1, #covered
       TRUE ~ NA_real_
+    ),
+    new_race = case_when(
+      NEWRACE2 == 2 ~ 0, #black
+      NEWRACE2 == 7 ~ 1, #hispanic
+      NEWRACE2 == 3 | NEWRACE2 ==4 ~ 2, #native
+      NEWRACE2 == 5 ~ 3, #asian
+      NEWRACE2 == 1 ~ 4, #white
+      NEWRACE2 == 6 ~ 5, #other
+      TRUE ~ NA_real_
     )
   )
 
@@ -154,7 +150,7 @@ colnames(data_subset_one)[colnames(data_subset_one) == "QUESTID2"] <- "id"
 colnames(data_subset_one)[colnames(data_subset_one) == "CATAG6"] <- "age"
 colnames(data_subset_one)[colnames(data_subset_one) == "HEALTH2"] <- "health"
 colnames(data_subset_one)[colnames(data_subset_one) == "IRSEX"] <- "sex"
-colnames(data_subset_one)[colnames(data_subset_one) == "NEWRACE2"] <- "race"
+colnames(data_subset_one)[colnames(data_subset_one) == "new_race"] <- "race"
 colnames(data_subset_one)[colnames(data_subset_one) == "SEXRACE"] <- "sex_race"
 colnames(data_subset_one)[colnames(data_subset_one) == "HLCNOTYR"] <- "insurance_12"
 colnames(data_subset_one)[colnames(data_subset_one) == "IRINSUR4"] <- "insurance_binary"
@@ -174,99 +170,116 @@ colnames(data_subset_one)[colnames(data_subset_one) == "COMHSVHLT2"] <- "covid_c
 ```{r finaldata}
 
 #Create subset with variables desired
-final_data <- data_subset_one[, c("id", "age", "health", "education_level", 
-                                  "sex", "race", "sex_race", "college_educated",
-                                  "health_binary",
+final_data <- data_subset_one[, c("id", "age", "race",
                                      
-                                  "insurance_type", "private_coverage","insurance_12", 
-                                  "insurance_binary", "coverage_01",
+                                  "insurance_type","insurance_binary", "coverage_01",
                                      
-                                  "govt_prog", "poverty", "employment",
-                                     
-                                  "covid_mental", "covid_financial", "covid_tele", "covid_appt",
-                                  "covid_prescrip", "covid_care",
-                                     
-                                  "depression_score", "anxiety_score", "mental_health_score", 
-                                  "depression_status", "anxiety_status", "mental_health_status")]
+                                  "depression_score", "anxiety_score", "mental_health_score")]
+
+final_data <- final_data[!is.na(final_data$insurance_type) & !is.na(final_data$race) & !is.na(final_data$depression_score) & !is.na(final_data$anxiety_score) & !is.na(final_data$mental_health_score), ]
+
 final_data
 
-
 ```
 
-```{r chi2_race}
+```{r chi2}
 #Is there a significant difference in insurance type and coverage between different races?
 
-#Remove empty variables
-final_data_clean1 <- final_data[!is.na(final_data$insurance_type) & !is.na(final_data$race), ]
+# Convert variables to factors
+final_data$race <- factor(final_data$race,
+                          levels = c("0", "1", "2", "3", "4", "5"),
+                          labels = c("African American", "Native", 
+                                     "Hispanic", "Asian", "White", "More than one race"))
 
-#Chi Square Test
-chi_race_insurance_test <- chisq.test(final_data_clean1$insurance_type, final_data_clean1$race)
+final_data$insurance_type <- factor(final_data$insurance_type,
+                                    levels = c("0", "1", "2", "3"),
+                                    labels = c("Not Covered", "Medicare", "Medicaid", "Private"))
+
+# Chi-Square Test (after making sure these are factors)
+chi_race_insurance_test <- chisq.test(table(final_data$insurance_type, final_data$race))
 chi_race_insurance_test
 
-#Contingency Table
-table(final_data_clean1$insurance_type, final_data_clean1$race)
+# Contingency Table
+table(final_data$insurance_type, final_data$race)
 
-#Plot
-ggplot(final_data_clean1, aes(x = race, fill = insurance_type)) +
+# Plot
+ggplot(final_data, aes(x = race, fill = insurance_type)) +
   geom_bar(position = "fill") +
-    labs(title = "Insurance Type Distribution by Race",
+  labs(title = "Insurance Type Distribution by Race",
        y = "Proportion", x = "Race") +
-  scale_x_discrete(guide = guide_axis(angle=30),
-                   labels = c("1" = "White",
-                              "2" = "African American",
-                              "3" = "Native American",
-                              "4" = "Native Hawaiian",
-                              "5" = "Asian",
-                              "6" = "More than one race",
-                              "7" = "Hispanic")) +
-  scale_fill_discrete(name = "Insurance Coverage",
-                      labels = c("0" = "Not Covered",
-                                 "1" = "Medicare",
-                                 "2" = "Medicaid/Chip",
-                                 "3" = "Private, employer",
-                                 "4" = "Private, elsewhere")) +
-      theme_minimal() 
-  
-```
-
-
-```{r chi2_poverty}
-#Is there a significant difference in insurance type and coverage between different poverty levels?
-final_data_clean2 <- final_data[!is.na(final_data$insurance_type) & !is.na(final_data$poverty), ]
-
-#Chi Square Test
-chi_poverty_insurance_test <- chisq.test(final_data_clean1$insurance_type, final_data_clean1$poverty)
-chi_poverty_insurance_test
-
-#Contingency Table
-table(final_data_clean2$insurance_type, final_data_clean2$poverty)
-
-#Plot
-ggplot(final_data_clean2, aes(x = poverty, fill = insurance_type)) +
-  geom_bar(position = "fill") +
-    labs(title = "Insurance Type Distribution by Poverty Level",
-       y = "Proportion", x = "Poverty Level") +
-    scale_x_discrete(guide = guide_axis(angle=20),
-                   labels = c("1" = "Living in Poverty",
-                              "2" = "Income up to 2x FPL",
-                              "3" = "Income More than 2x FPL")) +
-  scale_fill_discrete(name = "Insurance Coverage",
-                      labels = c("0" = "Not Covered",
-                                 "1" = "Medicare",
-                                 "2" = "Medicaid/Chip",
-                                 "3" = "Private, employer",
-                                 "4" = "Private, elsewhere")) +
-  theme_minimal() 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  scale_fill_discrete(name = "Insurance Coverage")
 
 ```
 
-```{r manova_mental}
-#Is there a significant difference in depression status and anxiety status between those with/without insurance? 
+```{r anova_mentalhealth}
+#Is there a significant difference in mental health score between different races?
 
-manova_result <- manova(cbind(depression_status, anxiety_status) ~ coverage_01, data = final_data)
-summary(manova_result)
+#Anova test
+anova_result <- aov(mental_health_score ~ race, data = final_data)
+summary(anova_result)
+
+#Boxplot
+ggplot(final_data, aes(x = factor(race), y = mental_health_score)) +
+  geom_boxplot() +
+  labs(title = "Mental Health Score by Race", x = "Race", y = "Mental Health Score") +
+  scale_x_discrete(labels = c("0" = "African American", 
+                              "1" = "Native", 
+                              "2" = "Hispanic", 
+                              "3" = "Asian", 
+                              "4" = "White", 
+                              "5" = "More than one race")) +  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
 
 ```
+
+```{r anova_anxiety}
+#Is there a significant difference in mental health score between different races?
+
+#Anova test
+anova_result <- aov(anxiety_score ~ race, data = final_data)
+summary(anova_result)
+
+#Boxplot
+ggplot(final_data, aes(x = factor(race), y = anxiety_score)) +
+  geom_boxplot() +
+  labs(title = "Anxiety Score by Race", x = "Race", y = "Anxiety Score") +
+  scale_x_discrete(labels = c("0" = "African American", 
+                              "1" = "Native", 
+                              "2" = "Hispanic", 
+                              "3" = "Asian", 
+                              "4" = "White", 
+                              "5" = "More than one race")) +  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+```
+
+
+```{r anove_depression}
+#Is there a significant difference in mental health score between different races?
+
+#Anova test
+anova_result <- aov(depression_score ~ race, data = final_data)
+summary(anova_result)
+
+#Boxplot
+ggplot(final_data, aes(x = factor(race), y = depression_score)) +
+  geom_boxplot() +
+  labs(title = "Depression Score by Race", x = "Race", y = "Depression Score") +
+  scale_x_discrete(labels = c("0" = "African American", 
+                              "1" = "Native", 
+                              "2" = "Hispanic", 
+                              "3" = "Asian", 
+                              "4" = "White", 
+                              "5" = "More than one race")) +  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+```
+
 
 
 
