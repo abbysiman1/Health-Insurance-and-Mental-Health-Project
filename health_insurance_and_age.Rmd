@@ -11,13 +11,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## R Markdown
 
-
 ```{r createfile}
 library(dplyr)
 library(readr)
 library(corrplot)
 library(ggplot2)
 library(tidyverse)
+library(emmeans)
+library(ggpubr)
+library(gridExtra)
+
 
 #Load File
 file_path <- "/Users/summerjohnson/Desktop/4810 Group/NSDUH_2023_Tab.txt"
@@ -172,7 +175,7 @@ colnames(data_subset_one)[colnames(data_subset_one) == "COMHSVHLT2"] <- "covid_c
 #Create subset with variables desired
 final_data <- data_subset_one[, c("id", "age", "race",
                                      
-                                  "insurance_type","insurance_binary", "coverage_01",
+                                  "insurance_type",
                                      
                                   "depression_score", "anxiety_score", "mental_health_score")]
 
@@ -217,11 +220,14 @@ ggplot(final_data, aes(x = race, fill = insurance_type)) +
 #Is there a significant difference in mental health score between different races?
 
 #Anova test
-anova_result <- aov(mental_health_score ~ race, data = final_data)
-summary(anova_result)
+anova_result_mh <- aov(mental_health_score ~ race, data = final_data)
+summary(anova_result_mh)
+
+#Estimated marginal means with 95% CIs
+emmeans(anova_result_mh, ~ race)
 
 #Boxplot
-ggplot(final_data, aes(x = factor(race), y = mental_health_score)) +
+p1 <- ggplot(final_data, aes(x = factor(race), y = mental_health_score)) +
   geom_boxplot() +
   labs(title = "Mental Health Score by Race", x = "Race", y = "Mental Health Score") +
   scale_x_discrete(labels = c("0" = "African American", 
@@ -236,14 +242,17 @@ ggplot(final_data, aes(x = factor(race), y = mental_health_score)) +
 ```
 
 ```{r anova_anxiety}
-#Is there a significant difference in mental health score between different races?
+#Is there a significant difference in anxiety score between different races?
 
 #Anova test
-anova_result <- aov(anxiety_score ~ race, data = final_data)
-summary(anova_result)
+anova_result_a <- aov(anxiety_score ~ race, data = final_data)
+summary(anova_result_a)
+
+#Estimated marginal means with 95% CIs
+emmeans(anova_result_a, ~ race)
 
 #Boxplot
-ggplot(final_data, aes(x = factor(race), y = anxiety_score)) +
+p2 <- ggplot(final_data, aes(x = factor(race), y = anxiety_score)) +
   geom_boxplot() +
   labs(title = "Anxiety Score by Race", x = "Race", y = "Anxiety Score") +
   scale_x_discrete(labels = c("0" = "African American", 
@@ -259,14 +268,17 @@ ggplot(final_data, aes(x = factor(race), y = anxiety_score)) +
 
 
 ```{r anove_depression}
-#Is there a significant difference in mental health score between different races?
+#Is there a significant difference in depression score between different races?
 
 #Anova test
-anova_result <- aov(depression_score ~ race, data = final_data)
-summary(anova_result)
+anova_result_d <- aov(depression_score ~ race, data = final_data)
+summary(anova_result_d)
+
+#Estimated marginal means with 95% CIs
+emmeans(anova_result_d, ~ race)
 
 #Boxplot
-ggplot(final_data, aes(x = factor(race), y = depression_score)) +
+p3 <- ggplot(final_data, aes(x = factor(race), y = depression_score)) +
   geom_boxplot() +
   labs(title = "Depression Score by Race", x = "Race", y = "Depression Score") +
   scale_x_discrete(labels = c("0" = "African American", 
@@ -280,8 +292,37 @@ ggplot(final_data, aes(x = factor(race), y = depression_score)) +
 
 ```
 
+```{r graph}
 
+#Combine plots into a grid
+grid.arrange(p1, p2, p3, ncol=2)
 
+```
+
+``` {r sid}
+# Visualizing the relationship
+# Plot mental health scores by insurance type
+p4 <- ggplot(final_data, aes(x = factor(insurance_type), y = depression_score, fill = factor(insurance_type))) +
+  geom_boxplot() +
+  labs(title = "Depression Scores by Insurance Type", x = "Insurance Type", y = "Depression Score") +
+  scale_fill_discrete(name = "Insurance Coverage",
+                      labels = c("0" = "Not Covered",
+                                 "1" = "Medicare",
+                                 "2" = "Medicaid",
+                                 "3" = "Private"))
+
+p5 <- ggplot(final_data, aes(x = factor(insurance_type), y = anxiety_score, fill = factor(insurance_type))) +
+  geom_boxplot() +
+  labs(title = "Anxiety Scores by Insurance Type", x = "Insurance Type", y = "Anxiety Score") +
+  scale_fill_discrete(name = "Insurance Coverage",
+                      labels = c("0" = "Not Covered",
+                                 "1" = "Medicare",
+                                 "2" = "Medicaid",
+                                 "3" = "Private"))
+
+grid.arrange(p4, p5, ncol=2)
+
+```
 
 
 
