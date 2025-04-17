@@ -106,10 +106,8 @@ data_subset_one <- cleaned_data %>%
     new_race = case_when(
       NEWRACE2 == 2 ~ 0, #black
       NEWRACE2 == 7 ~ 1, #hispanic
-      NEWRACE2 == 3 | NEWRACE2 ==4 ~ 2, #native
-      NEWRACE2 == 5 ~ 3, #asian
-      NEWRACE2 == 1 ~ 4, #white
-      NEWRACE2 == 6 ~ 5, #other
+      NEWRACE2 == 1 ~ 2, #white
+      NEWRACE2 == 3 | NEWRACE2 ==4 | NEWRACE2 == 5 | NEWRACE2 == 6 ~ 3, #other
       TRUE ~ NA_real_
     )
   )
@@ -152,14 +150,14 @@ ggplot(data = final_data, mapping = aes(x = insurance_type)) +
   geom_bar()
 
 # visualize
-ggplot(final_data, aes(x = insurance_type, y = mental_health_score, fill = race)) +
+ggplot(final_data, aes(x = race, y = mental_health_score, fill = insurance_type)) +
   stat_summary(fun = mean, geom = "bar", position = "dodge") +
   labs(title = "Mental Health Score by Race and Insurance Type",
-       x = "Insurance Type",
+       x = "Race",
        y = "Mental Health Score",
-       fill = "Race") +
-  scale_x_discrete(labels = c("Not Covered", "Medicare", "Medicaid", "Private")) +
-  scale_fill_hue(labels = c("AfrAm", "Hispanic", "Native", "Asian", "White", "Mixed")) +
+       fill = "Insurance Type") +
+  scale_x_discrete(labels = c("AfrAm", "Hispanic", "White", "Other")) +
+  scale_fill_hue(labels = c("Not Covered", "Medicare", "Medicaid", "Private")) +
   theme_bw()
 
 # ensure factored independent variables
@@ -173,4 +171,18 @@ summary(anova_model)
 
 # find the mean mhs of each group
 library(emmeans)
-emmeans(anova_model, ~ race * insurance_type)
+emm_results <- emmeans(anova_model, ~ race * insurance_type)
+
+# plot emm results
+ggplot(emm_df, aes(x = race, y = emmean, color = insurance_type)) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+                width = 0.2, position = position_dodge(width = 0.3)) +
+  geom_line(aes(group = insurance_type), position = position_dodge(width = 0.4)) +
+  labs(x = "Race",
+       y = "EMM Mental Health Score",
+       color = "Insurance") +
+  scale_x_discrete(labels = c("0" = "African American", "1" = "Hispanic", "2" = "White", "3" = "Other")) +
+  scale_color_hue(labels = c("Not Covered", "Medicare", "Medicaid", "Private")) +
+  theme_bw()
+emm_df = as.data.frame(emm_results)
